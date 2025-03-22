@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FISH - Imposter Syndrome Game</title>
     <style>
+        /* Keeping all your original CSS styles */
         #game-btn {
             position: absolute;
             top: 20px;
@@ -240,6 +241,21 @@
             background: rgba(100, 100, 100, 0.7);
         }
         
+        /* New style for cursor animation */
+        .typing-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 16px;
+            background-color: #333;
+            margin-left: 2px;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
         @media (max-width: 500px) {
             #chat-container {
                 width: 90%;
@@ -247,12 +263,6 @@
             h1 {
                 font-size: 32px;
             }
-        }
-
-        /* For typing animation */
-        .typing-text {
-            white-space: pre-wrap;
-            word-break: break-word;
         }
     </style>
 </head>
@@ -296,6 +306,7 @@
         const closeModal = document.querySelector(".close-modal");
         
         let currentStep = "intro";
+        let isTyping = false;
         
         // About modal functionality
         aboutBtn.addEventListener("click", () => {
@@ -317,64 +328,119 @@
             outputDiv.scrollTop = outputDiv.scrollHeight;
         }
 
-        // Modified function to type text character by character
+        // New typing animation function
         function displayBotMessage(message) {
-            // Replace \n with <br> for HTML formatting
+            // If already typing, return to prevent overlapping animations
+            if (isTyping) return;
+            
+            isTyping = true;
             const formattedMessage = message.replace(/\n/g, '<br>');
             
-            // Create the bot message div and add to output
+            // Create message container
             const messageDiv = document.createElement('div');
             messageDiv.className = 'bot-message';
-            messageDiv.innerHTML = '<strong>FISH:</strong> <span class="typing-text"></span>';
+            messageDiv.innerHTML = '<strong>FISH:</strong> ';
+            
+            // Create span for typing text
+            const textSpan = document.createElement('span');
+            messageDiv.appendChild(textSpan);
+            
+            // Create cursor element
+            const cursor = document.createElement('span');
+            cursor.className = 'typing-cursor';
+            messageDiv.appendChild(cursor);
+            
+            // Add to DOM
             outputDiv.appendChild(messageDiv);
             
-            const textContainer = messageDiv.querySelector('.typing-text');
-            const textToType = formattedMessage;
-            let index = 0;
+            // Type characters one by one
+            let charIndex = 0;
+            const textChars = formattedMessage;
+            const htmlTags = [];
+            let inTag = false;
+            let currentTag = '';
             
-            // Disable input while typing
-            inputField.disabled = true;
-            sendButton.disabled = true;
-            
-            // Function to type each character with delay
             function typeNextChar() {
-                if (index < textToType.length) {
-                    // Check if current character + next 3 characters form <br> tag
-                    if (index + 3 < textToType.length && 
-                        textToType.substring(index, index + 4) === '<br>') {
-                        textContainer.innerHTML += '<br>';
-                        index += 4; // Skip the <br> tag
-                    } else {
-                        textContainer.innerHTML += textToType.charAt(index);
-                        index++;
+                if (charIndex < textChars.length) {
+                    // Handle HTML tags (don't animate them)
+                    if (textChars[charIndex] === '<') {
+                        inTag = true;
+                        currentTag = '<';
                     }
                     
+                    if (inTag) {
+                        currentTag += textChars[charIndex];
+                        if (textChars[charIndex] === '>') {
+                            htmlTags.push(currentTag);
+                            textSpan.innerHTML += currentTag;
+                            inTag = false;
+                            currentTag = '';
+                        }
+                    } else {
+                        // Regular character
+                        textSpan.innerHTML += textChars[charIndex];
+                    }
+                    
+                    charIndex++;
                     outputDiv.scrollTop = outputDiv.scrollHeight;
-                    setTimeout(typeNextChar, 30); // Adjust typing speed here (30ms)
+                    
+                    // Randomize typing speed between 30-70ms for natural effect
+                    const typingSpeed = Math.floor(Math.random() * 40) + 30;
+                    setTimeout(typeNextChar, typingSpeed);
                 } else {
-                    // Re-enable input after typing is done
-                    inputField.disabled = false;
-                    sendButton.disabled = false;
-                    inputField.focus();
+                    // Typing complete
+                    isTyping = false;
+                    // Remove cursor when done typing
+                    cursor.remove();
                 }
             }
             
             // Start typing
-            setTimeout(typeNextChar, 200); // Small delay before starting
+            typeNextChar();
+            outputDiv.scrollTop = outputDiv.scrollHeight;
         }
 
+        // Skip animation feature - if you click on a typing message
+        outputDiv.addEventListener('click', () => {
+            if (isTyping) {
+                // Find the active message and complete it immediately
+                const activeMessage = outputDiv.querySelector('.bot-message:last-child');
+                const cursor = activeMessage.querySelector('.typing-cursor');
+                
+                if (activeMessage && cursor) {
+                    const spans = activeMessage.querySelectorAll('span');
+                    const textSpan = spans[0];
+                    
+                    // Get the full message from the fetch response
+                    fetch("http://127.0.0.1:5000/get-last-message")
+                        .then(response => response.json())
+                        .then(data => {
+                            const formattedMessage = data.message.replace(/\n/g, '<br>');
+                            textSpan.innerHTML = formattedMessage;
+                            cursor.remove();
+                            isTyping = false;
+                        })
+                        .catch(error => {
+                            console.error("Error:", error);
+                        });
+                }
+            }
+        });
+
         inputField.addEventListener("keypress", function(event) {
-            if (event.key === "Enter" && !inputField.disabled) {
+            if (event.key === "Enter") {
                 event.preventDefault();
                 sendButton.click();
             }
         });
 
         sendButton.addEventListener("click", () => {
-            if (inputField.disabled) return; // Prevent sending while bot is typing
-            
             const userMessage = inputField.value.trim();
             if (!userMessage) return;
+            
+            // Disable input while typing
+            inputField.disabled = true;
+            sendButton.disabled = true;
             
             displayUserMessage(userMessage);
             
@@ -391,10 +457,20 @@
             .then(data => {
                 displayBotMessage(data.response);
                 currentStep = data.current_step;
+                
+                // Re-enable input after animation starts
+                inputField.disabled = false;
+                sendButton.disabled = false;
+                inputField.focus();
             })
             .catch(error => {
                 console.error("Error:", error);
                 displayBotMessage("I'm having trouble connecting to the game. Please make sure the server is running.");
+                
+                // Re-enable input on error
+                inputField.disabled = false;
+                sendButton.disabled = false;
+                inputField.focus();
             });
             
             inputField.value = "";
