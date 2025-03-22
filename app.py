@@ -19,7 +19,7 @@ class ImposterGame:
         if self.current_step == "intro":
             self.name = user_input
             self.current_step = "one"
-            return f"{self.name}! You are a very brave knight in the middle ages. You have fought hundreds of battles, protecting your city from raiders and wild animal attacks." 
+            return f"{self.name}! You are a very brave knight in the middle ages. You have fought hundreds of battles, protecting your city from raiders and wild animal attacks. [Please Send a Message]" 
         elif self.current_step == "one":
                 self.current_step = "two"
                 return ("As you grow older you begin to feel like you have done so little for the long life you have lived. In the 80 years you have fought and the hundreds of people you have saved you feel bad. You feel like you have not achieved enough. You go to a wizard to get help, he suggests making a list of all of your accomplishments. Do you make a list or ignore him?")
