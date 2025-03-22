@@ -240,19 +240,53 @@
             background: rgba(100, 100, 100, 0.7);
         }
         
-        /* Cursor style */
+        /* Blinking cursor styles */
         .typing-cursor {
             display: inline-block;
-            width: 2px;
-            height: 16px;
+            width: 3px;
+            height: 15px;
             background-color: #333;
             margin-left: 2px;
-            animation: cursor-blink 1s step-end infinite;
+            animation: blink 1s infinite;
+            vertical-align: middle;
         }
         
-        @keyframes cursor-blink {
-            from, to { opacity: 1; }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
             50% { opacity: 0; }
+        }
+        
+        /* Speed control buttons */
+        #speed-controls {
+            display: flex;
+            position: absolute;
+            bottom: -30px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 0 0 8px 8px;
+            padding: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .speed-btn {
+            margin-left: 5px;
+            padding: 5px 10px;
+            background-color: rgba(255, 255, 255, 0.7);
+            color: #333;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .speed-btn:hover {
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .speed-btn.active {
+            background-color: rgba(51, 51, 51, 0.8);
+            color: white;
         }
         
         @media (max-width: 500px) {
@@ -280,6 +314,12 @@
             <button id="send-btn">Send</button>
         </div>
     </div>
+    
+    <div id="speed-controls">
+        <button class="speed-btn" data-speed="slow">Slow</button>
+        <button class="speed-btn active" data-speed="medium">Medium</button>
+        <button class="speed-btn" data-speed="fast">Fast</button>
+    </div>
 
     <div id="about-modal">
         <div class="modal-content">
@@ -304,6 +344,30 @@
             const aboutBtn = document.getElementById("about-btn");
             const aboutModal = document.getElementById("about-modal");
             const closeModal = document.querySelector(".close-modal");
+            const speedBtns = document.querySelectorAll(".speed-btn");
+            
+            // Text typing speed configuration
+            let typingSpeed = {
+                slow: 70,     // milliseconds per character
+                medium: 40,   // milliseconds per character
+                fast: 15      // milliseconds per character
+            };
+            
+            let currentSpeed = "medium";
+            let isTyping = false;
+            let typingTimeout;
+            
+            // Set up speed control buttons
+            speedBtns.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    // Remove active class from all buttons
+                    speedBtns.forEach(b => b.classList.remove("active"));
+                    // Add active class to clicked button
+                    btn.classList.add("active");
+                    // Update current speed
+                    currentSpeed = btn.getAttribute("data-speed");
+                });
+            });
             
             aboutBtn.addEventListener("click", () => {
                 aboutModal.style.display = "flex";
@@ -320,23 +384,7 @@
             });
             
             setTimeout(() => {
-                const initialMessage = "Hi there! I'm your Friendly Imposter Syndrome Helper (FISH). I can help you with several aspects of imposter syndrome:\n\n• Long-term struggles with self-doubt\n• Recent feelings of being an imposter\n• Progress in overcoming imposter syndrome\n• Feeling overwhelmed or anxious\n• Undervaluing your skills and accomplishments\n• Difficulty accepting success or recognition\n\nHow have you been feeling lately?";
-                
-                const messageDiv = document.createElement("div");
-                messageDiv.className = "bot-message";
-                messageDiv.innerHTML = "<strong>FISH:</strong> ";
-                
-                const textSpan = document.createElement("span");
-                textSpan.className = "typing-text";
-                messageDiv.appendChild(textSpan);
-                
-                const cursor = document.createElement("span");
-                cursor.className = "typing-cursor";
-                messageDiv.appendChild(cursor);
-                
-                outputDiv.appendChild(messageDiv);
-                
-                typeMessage(initialMessage, textSpan, cursor);
+                displayBotMessageWithTyping("Hi there! I'm your Friendly Imposter Syndrome Helper (FISH). I can help you with several aspects of imposter syndrome:\n\n• Long-term struggles with self-doubt\n• Recent feelings of being an imposter\n• Progress in overcoming imposter syndrome\n• Feeling overwhelmed or anxious\n• Undervaluing your skills and accomplishments\n• Difficulty accepting success or recognition\n\nHow have you been feeling lately?");
             }, 500);
 
             const responses = {
@@ -405,51 +453,60 @@
                 outputDiv.innerHTML += `<div class="user-message"><strong>You:</strong> ${message}</div>`;
                 outputDiv.scrollTop = outputDiv.scrollHeight;
             }
-
-            function displayBotMessage(message) {
-                const messageDiv = document.createElement("div");
-                messageDiv.className = "bot-message";
-                messageDiv.innerHTML = "<strong>FISH:</strong> ";
-                
-                const textSpan = document.createElement("span");
-                textSpan.className = "typing-text";
-                messageDiv.appendChild(textSpan);
-                
-                const cursor = document.createElement("span");
-                cursor.className = "typing-cursor";
-                messageDiv.appendChild(cursor);
-                
+            
+            // Function to create a bot message container with cursor
+            function createBotMessageContainer() {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'bot-message';
+                messageDiv.innerHTML = '<strong>FISH:</strong> <span class="message-text"></span><span class="typing-cursor"></span>';
                 outputDiv.appendChild(messageDiv);
                 outputDiv.scrollTop = outputDiv.scrollHeight;
-                
-                typeMessage(message, textSpan, cursor);
+                return messageDiv.querySelector('.message-text');
             }
             
-            function typeMessage(message, element, cursor, index = 0) {
-                // Set the typing speed (milliseconds per character)
-                const typingSpeed = 30;
-                
-                if (index < message.length) {
-                    if (message[index] === '\n') {
-                        // Handle newlines by adding a <br> element
+            // Function to type out text character by character
+            function typeText(element, text, index, callback) {
+                if (index < text.length) {
+                    // Handle newlines in the text for HTML display
+                    if (text[index] === '\n') {
                         element.innerHTML += '<br>';
                     } else {
-                        element.textContent += message[index];
+                        element.innerHTML += text[index];
                     }
                     
                     outputDiv.scrollTop = outputDiv.scrollHeight;
                     
-                    setTimeout(() => {
-                        typeMessage(message, element, cursor, index + 1);
-                    }, typingSpeed);
-                } else {
-                    // Remove cursor after typing is complete
-                    cursor.style.display = 'none';
+                    // Calculate delay for the next character
+                    let delay = typingSpeed[currentSpeed];
                     
-                    // Enable input after typing is complete
-                    inputField.disabled = false;
-                    sendButton.disabled = false;
+                    // Add extra delay for punctuation
+                    if (['.', '!', '?', ':'].includes(text[index])) {
+                        delay *= 2;
+                    }
+                    
+                    typingTimeout = setTimeout(() => {
+                        typeText(element, text, index + 1, callback);
+                    }, delay);
+                } else {
+                    // Remove cursor when typing is complete
+                    const cursor = element.parentNode.querySelector('.typing-cursor');
+                    if (cursor) cursor.remove();
+                    
+                    isTyping = false;
+                    if (callback) callback();
                 }
+            }
+            
+            // Function to display bot message with typing effect
+            function displayBotMessageWithTyping(message) {
+                // If already typing, clear the timeout to prevent overlapping
+                if (isTyping && typingTimeout) {
+                    clearTimeout(typingTimeout);
+                }
+                
+                isTyping = true;
+                const messageTextElement = createBotMessageContainer();
+                typeText(messageTextElement, message, 0);
             }
 
             inputField.addEventListener("keypress", function(event) {
@@ -463,8 +520,7 @@
                 const userMessage = inputField.value.trim();
                 if (!userMessage) return;
                 
-                // Disable input while typing
-                inputField.disabled = true;
+                // Disable send button while typing response
                 sendButton.disabled = true;
                 
                 displayUserMessage(userMessage);
@@ -482,7 +538,10 @@
                         }
                     }
                     
-                    displayBotMessage(responses[responseKey]);
+                    displayBotMessageWithTyping(responses[responseKey]);
+                    
+                    // Re-enable send button after response starts
+                    sendButton.disabled = false;
                 }, 800);
             });
             
@@ -504,4 +563,4 @@
         });
     </script>
 </body>
-</html>
+</html>x
