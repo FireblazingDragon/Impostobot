@@ -74,21 +74,17 @@ class ImposterGame:
             return "Congratulations, {self.name} you now understand your accomplishments, and the worth that comes along with them regardless of what others tell you or what you think of yourself."
 game = ImposterGame()
 @app.route('/game', methods=['POST'])
-def process_game():
+def process_input():
     data = request.json
-    user_text = data.get('text', '')
-    step = data.get('step', 'intro')
+    user_input = data.get('text', '')
+    step = data.get('step', None)
     
-    # Process game logic based on step
-    response, next_step = process_game_logic(user_text, step)
-    
-    # Store the last message for the skip animation feature
-    game_state["last_message"] = response
-    game_state["current_step"] = next_step
+    response = game.process_input(user_input, step)
     
     return jsonify({
-        "response": response,
-        "current_step": next_step
+        'response': response,
+        'current_step': game.current_step,
+        'choices': game.choices
     })
 
 @app.route('/get-last-message', methods=['GET'])
