@@ -240,6 +240,21 @@
             background: rgba(100, 100, 100, 0.7);
         }
         
+        /* Cursor style */
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 16px;
+            background-color: #333;
+            margin-left: 2px;
+            animation: cursor-blink 1s step-end infinite;
+        }
+        
+        @keyframes cursor-blink {
+            from, to { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
         @media (max-width: 500px) {
             #chat-container {
                 width: 90%;
@@ -305,7 +320,23 @@
             });
             
             setTimeout(() => {
-                displayBotMessage("Hi there! I'm your Friendly Imposter Syndrome Helper (FISH). I can help you with several aspects of imposter syndrome:\n\n• Long-term struggles with self-doubt\n• Recent feelings of being an imposter\n• Progress in overcoming imposter syndrome\n• Feeling overwhelmed or anxious\n• Undervaluing your skills and accomplishments\n• Difficulty accepting success or recognition\n\nHow have you been feeling lately?");
+                const initialMessage = "Hi there! I'm your Friendly Imposter Syndrome Helper (FISH). I can help you with several aspects of imposter syndrome:\n\n• Long-term struggles with self-doubt\n• Recent feelings of being an imposter\n• Progress in overcoming imposter syndrome\n• Feeling overwhelmed or anxious\n• Undervaluing your skills and accomplishments\n• Difficulty accepting success or recognition\n\nHow have you been feeling lately?";
+                
+                const messageDiv = document.createElement("div");
+                messageDiv.className = "bot-message";
+                messageDiv.innerHTML = "<strong>FISH:</strong> ";
+                
+                const textSpan = document.createElement("span");
+                textSpan.className = "typing-text";
+                messageDiv.appendChild(textSpan);
+                
+                const cursor = document.createElement("span");
+                cursor.className = "typing-cursor";
+                messageDiv.appendChild(cursor);
+                
+                outputDiv.appendChild(messageDiv);
+                
+                typeMessage(initialMessage, textSpan, cursor);
             }, 500);
 
             const responses = {
@@ -376,9 +407,49 @@
             }
 
             function displayBotMessage(message) {
-                const formattedMessage = message.replace(/\n/g, '<br>');
-                outputDiv.innerHTML += `<div class="bot-message"><strong>FISH:</strong> ${formattedMessage}</div>`;
+                const messageDiv = document.createElement("div");
+                messageDiv.className = "bot-message";
+                messageDiv.innerHTML = "<strong>FISH:</strong> ";
+                
+                const textSpan = document.createElement("span");
+                textSpan.className = "typing-text";
+                messageDiv.appendChild(textSpan);
+                
+                const cursor = document.createElement("span");
+                cursor.className = "typing-cursor";
+                messageDiv.appendChild(cursor);
+                
+                outputDiv.appendChild(messageDiv);
                 outputDiv.scrollTop = outputDiv.scrollHeight;
+                
+                typeMessage(message, textSpan, cursor);
+            }
+            
+            function typeMessage(message, element, cursor, index = 0) {
+                // Set the typing speed (milliseconds per character)
+                const typingSpeed = 30;
+                
+                if (index < message.length) {
+                    if (message[index] === '\n') {
+                        // Handle newlines by adding a <br> element
+                        element.innerHTML += '<br>';
+                    } else {
+                        element.textContent += message[index];
+                    }
+                    
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                    
+                    setTimeout(() => {
+                        typeMessage(message, element, cursor, index + 1);
+                    }, typingSpeed);
+                } else {
+                    // Remove cursor after typing is complete
+                    cursor.style.display = 'none';
+                    
+                    // Enable input after typing is complete
+                    inputField.disabled = false;
+                    sendButton.disabled = false;
+                }
             }
 
             inputField.addEventListener("keypress", function(event) {
@@ -391,6 +462,10 @@
             sendButton.addEventListener("click", () => {
                 const userMessage = inputField.value.trim();
                 if (!userMessage) return;
+                
+                // Disable input while typing
+                inputField.disabled = true;
+                sendButton.disabled = true;
                 
                 displayUserMessage(userMessage);
                 
