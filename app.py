@@ -28,9 +28,9 @@ class ImposterGame:
             try:
                 self.score = int(user_input)
                 self.current_step = "listA"
-                return ("You have a huge leadership job at a massive tech company. You have earned millions of dollars and have led your company to earn billions of dollars.\n\n"
+                return slowprint("You have a huge leadership job at a massive tech company. You have earned millions of dollars and have led your company to earn billions of dollars.\n\n"
                        "But you can't seem to notice any of your hundreds of achievements. You feel like your achievements are invalid and don't matter.\n\n"
-                       "To fix this feeling do you make a list of achievements and relize your potetnial or do nothing and try to shake the feeling")
+                       "To fix this feeling do you make a list of achievements and relize your potetnial or do nothing and try to shake the feeling", 0.1)
             except ValueError:
                 return "Please enter a number between 0 and 10."
         
