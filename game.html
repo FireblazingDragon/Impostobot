@@ -248,6 +248,12 @@
                 font-size: 32px;
             }
         }
+
+        /* For typing animation */
+        .typing-text {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
     </style>
 </head>
 <body>
@@ -311,20 +317,62 @@
             outputDiv.scrollTop = outputDiv.scrollHeight;
         }
 
+        // Modified function to type text character by character
         function displayBotMessage(message) {
+            // Replace \n with <br> for HTML formatting
             const formattedMessage = message.replace(/\n/g, '<br>');
-            outputDiv.innerHTML += `<div class="bot-message"><strong>FISH:</strong> ${formattedMessage}</div>`;
-            outputDiv.scrollTop = outputDiv.scrollHeight;
+            
+            // Create the bot message div and add to output
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'bot-message';
+            messageDiv.innerHTML = '<strong>FISH:</strong> <span class="typing-text"></span>';
+            outputDiv.appendChild(messageDiv);
+            
+            const textContainer = messageDiv.querySelector('.typing-text');
+            const textToType = formattedMessage;
+            let index = 0;
+            
+            // Disable input while typing
+            inputField.disabled = true;
+            sendButton.disabled = true;
+            
+            // Function to type each character with delay
+            function typeNextChar() {
+                if (index < textToType.length) {
+                    // Check if current character + next 3 characters form <br> tag
+                    if (index + 3 < textToType.length && 
+                        textToType.substring(index, index + 4) === '<br>') {
+                        textContainer.innerHTML += '<br>';
+                        index += 4; // Skip the <br> tag
+                    } else {
+                        textContainer.innerHTML += textToType.charAt(index);
+                        index++;
+                    }
+                    
+                    outputDiv.scrollTop = outputDiv.scrollHeight;
+                    setTimeout(typeNextChar, 30); // Adjust typing speed here (30ms)
+                } else {
+                    // Re-enable input after typing is done
+                    inputField.disabled = false;
+                    sendButton.disabled = false;
+                    inputField.focus();
+                }
+            }
+            
+            // Start typing
+            setTimeout(typeNextChar, 200); // Small delay before starting
         }
 
         inputField.addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
+            if (event.key === "Enter" && !inputField.disabled) {
                 event.preventDefault();
                 sendButton.click();
             }
         });
 
         sendButton.addEventListener("click", () => {
+            if (inputField.disabled) return; // Prevent sending while bot is typing
+            
             const userMessage = inputField.value.trim();
             if (!userMessage) return;
             
